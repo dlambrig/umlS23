@@ -1,4 +1,2 @@
 # umlS23
 developer ops sping23 course
-v23
-# Week7-1
