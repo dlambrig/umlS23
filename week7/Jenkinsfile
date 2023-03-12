@@ -1,3 +1,9 @@
+podTemplate(containers: [
+    containerTemplate(
+        name: 'gradle', image: 'gradle:6.3-jdk14', command: 'sleep', args: '30d'
+        ),
+    ]) {
+
 node(POD_LABEL) {
     stage('Build a gradle project') {
       git 'https://github.com/samuelomonedo247/Continuous-Delivery-with-Docker-and-Jenkins-Second-Edition.git'
@@ -119,4 +125,3 @@ node(POD_LABEL) {
         }
        }
     }
-
