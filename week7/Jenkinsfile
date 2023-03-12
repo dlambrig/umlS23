@@ -68,7 +68,7 @@ podTemplate(yaml: '''
 
     stage("Unit test") {
             
-        if (env.BRANCH_NAME == 'main')
+        if (env.BRANCH_NAME == 'feature')
             {
            echo "I am the ${env.BRANCH_NAME} branch"
                    try {
@@ -83,7 +83,7 @@ podTemplate(yaml: '''
                echo 'Failure detected'
            }
              }
-        else if (env.BRANCH_NAME == 'main') {
+        else if (env.BRANCH_NAME == 'feature') {
            echo "I am the ${env.BRANCH_NAME} branch"
                    try {
                       sh '''
@@ -104,7 +104,7 @@ podTemplate(yaml: '''
 		
     stage("Code coverage") {
             echo "I am the ${env.BRANCH_NAME} branch"
-        if  (env.BRANCH_NAME == 'main')
+        if  (env.BRANCH_NAME == 'feature')
             {
                     try {
                       sh '''
@@ -123,7 +123,7 @@ podTemplate(yaml: '''
 
     stage("Code checkstyle") {
            echo "I am the ${env.BRANCH_NAME} branch"
-       if (env.BRANCH_NAME == 'main') {
+       if (env.BRANCH_NAME == 'feature') {
                try {
                  sh '''
                  pwd
@@ -137,7 +137,7 @@ podTemplate(yaml: '''
                   echo 'Failure detected'
                }
        }
-       else if (env.BRANCH_NAME == 'main') {
+       else if (env.BRANCH_NAME == 'feature') {
                try {
                  sh '''
                  pwd
