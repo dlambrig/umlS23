@@ -12,7 +12,6 @@ pipeline {
     }
     stages {
         stage('Checkout') {
-		git https://github.com/samuelomonedo247/umlS23.git
             agent any
             steps {
                 checkout scm
@@ -20,7 +19,6 @@ pipeline {
         }
 
         stage('Build and test') {
-		git https://github.com/samuelomonedo247/umlS23.git
             parallel {
                 stage('Master branch') {
                     when {
@@ -35,7 +33,6 @@ pipeline {
                     }
                 }
                 stage('Feature branch') {
-				git https://github.com/samuelomonedo247/umlS23.git
                     when {
                         branch 'feature'
                     }
@@ -46,7 +43,6 @@ pipeline {
                     }
                 }
                 stage('Playground branch') {
-				git https://github.com/samuelomonedo247/umlS23.git
                     when {
                         branch 'playground'
                     }
