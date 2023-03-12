@@ -12,18 +12,15 @@ pipeline {
             }
         }
         stage('Test') {
-    // Run all tests on the feature branch except for jacocoTestCoverageVerification
-    if (env.BRANCH_NAME == 'feature') {
-        steps {
-            sh './gradlew checkstyleMain jacocoTestReport test'
+            steps {
+                // Run all tests on the feature branch except for jacocoTestCoverageVerification
+                if (env.BRANCH_NAME == 'feature') {
+                    sh './gradlew checkstyleMain jacocoTestReport test'
+                } else {
+                    sh './gradlew checkstyleMain jacocoTestCoverageVerification jacocoTestReport test'
+                }
+            }
         }
-    } else {
-        steps {
-            sh './gradlew checkstyleMain jacocoTestCoverageVerification jacocoTestReport test'
-        }
-    }
-}
-
         stage('Build Container') {
             when {
                 // Only build the container if the build was successful, and not on the playground branch
