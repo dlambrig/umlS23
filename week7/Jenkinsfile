@@ -7,13 +7,6 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
     stages {
-        stage('Checkout') {
-            agent { label 'main' }
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Build and test') {
             parallel {
                 stage('Main branch') {
