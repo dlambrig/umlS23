@@ -1,45 +1,72 @@
+def calculatorImage = ''
+def version = ''
+
 pipeline {
-    agent any
-    
+    agent none
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
     stages {
-        stage('Build') {
-            when {
-                // Trigger when a new feature branch PR is created
-                expression { env.CHANGE_TARGET ==~ /^refs\/pull\/\d+\/merge$/ }
-            }
+        stage('Checkout') {
+            agent { label 'main' }
             steps {
-                sh './gradlew build'
+                checkout scm
             }
         }
-        stage('Test') {
-            steps {
-                // Run all tests on the feature branch except for jacocoTestCoverageVerification
-                if (env.BRANCH_NAME == 'feature') {
-                    sh './gradlew checkstyleMain jacocoTestReport test'
-                } else {
-                    sh './gradlew checkstyleMain jacocoTestCoverageVerification jacocoTestReport test'
+
+        stage('Build and test') {
+            parallel {
+                stage('Main branch') {
+                    when {
+                        branch 'main'
+                    }
+                    agent { label 'main' }
+                    steps {
+                        sh './gradlew checkstyleMain'
+                        sh './gradlew jacocoTestCoverageVerification'
+                        sh './gradlew jacocoTestReport'
+                        sh './gradlew test'
+                    }
+                }
+                stage('Feature branch') {
+                    when {
+                        branch 'feature'
+                    }
+                    agent { label 'main' }
+                    steps {
+                        sh './gradlew checkstyleMain'
+                        sh './gradlew test'
+                    }
+                }
+                stage('Playground branch') {
+                    when {
+                        branch 'playground'
+                    }
+                    agent { label 'main' }
+                    steps {
+                        echo 'Not running tests for playground branch'
+                    }
                 }
             }
         }
-        stage('Build Container') {
+
+        stage('Build container') {
             when {
-                // Only build the container if the build was successful, and not on the playground branch
-                not { branch 'playground' }
                 allOf {
                     expression { currentBuild.result == 'SUCCESS' }
-                    not { branch 'feature' }
+                    not { branch 'playground' }
                 }
             }
             steps {
                 script {
-                    def imageName = env.BRANCH_NAME == 'master' ? 'calculator' : 'calculator-feature'
-                    def version = env.BRANCH_NAME == 'master' ? '1.0' : '0.1'
-                    def imageFullName = "repository/${imageName}:${version}"
-                    try {
-                        sh "docker build -t ${imageFullName} ."
-                    } catch (err) {
-                        println "Failed to build docker image"
+                    if (env.BRANCH_NAME == 'feature') {
+                        calculatorImage = 'calculator-feature'
+                        version = '0.1'
+                    } else {
+                        calculatorImage = 'calculator'
+                        version = '1.0'
                     }
+                    docker.build("${env.DOCKER_REGISTRY}/${calculatorImage}:${version}")
                 }
             }
         }
