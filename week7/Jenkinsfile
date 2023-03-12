@@ -1,18 +1,32 @@
-def calculatorImage = ''
-def version = ''
-
 pipeline {
     agent none
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+    triggers {
+        pullRequestFilter(
+            branches: [[name: 'feature/**']],
+            targets: [[name: 'master']]
+        )
     }
     stages {
+        stage('Checkout') {
+		https://github.com/samuelomonedo247/umlS23
+            agent any
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Build and test') {
+		https://github.com/samuelomonedo247/umlS23
             parallel {
-                stage('Main branch') {
+                stage('Master branch') {
                     when {
-                        branch 'main'
+                        branch 'master'
                     }
+                    agent { label 'master' }
                     steps {
                         sh './gradlew checkstyleMain'
                         sh './gradlew jacocoTestCoverageVerification'
@@ -21,18 +35,22 @@ pipeline {
                     }
                 }
                 stage('Feature branch') {
+				https://github.com/samuelomonedo247/umlS23
                     when {
                         branch 'feature'
                     }
+                    agent { label 'master' }
                     steps {
                         sh './gradlew checkstyleMain'
                         sh './gradlew test'
                     }
                 }
                 stage('Playground branch') {
+				https://github.com/samuelomonedo247/umlS23
                     when {
                         branch 'playground'
                     }
+                    agent { label 'master' }
                     steps {
                         echo 'Not running tests for playground branch'
                     }
@@ -40,25 +58,48 @@ pipeline {
             }
         }
 
-        stage('Build container') {
-            when {
-                allOf {
-                    expression { currentBuild.result == 'SUCCESS' }
-                    not { branch 'playground' }
+        stage('Build and publish Docker image') {
+            agent {
+                docker {
+                    image 'gradle:6.3-jdk14'
+                    args '-v $HOME/.gradle:/root/.gradle'
                 }
             }
             steps {
-                script {
-                    if (env.BRANCH_NAME == 'feature') {
-                        calculatorImage = 'calculator-feature'
-                        version = '0.1'
-                    } else {
-                        calculatorImage = 'calculator'
-                        version = '1.0'
+                retry(3) {
+                    sh './gradlew build'
+                }
+
+                withCredentials([string(credentialsId: 'DOCKER_HUB_PASSWORD', variable: 'DOCKER_HUB_PASSWORD')]) {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub') {
+                        def calculatorImage = ''
+                        def version = ''
+                        script {
+                            if (env.BRANCH_NAME == 'feature') {
+                                calculatorImage = 'calculator-feature'
+                                version = '0.1'
+                            } else {
+                                calculatorImage = 'calculator'
+                                version = '1.0'
+                            }
+                        }
+                        retry(3) {
+                            docker.build("${calculatorImage}:${version}", '.')
+                            docker.withRegistry('', 'docker-hub') {
+                                docker.image("${calculatorImage}:${version}").push()
+                            }
+                        }
                     }
-                    docker.build("${env.DOCKER_REGISTRY}/${calculatorImage}:${version}")
                 }
             }
         }
-    }
-}
+
+        stage('Run tests and checks') {
+            agent {
+                docker {
+                    image 'openjdk:8-jre'
+                }
+            }
+        }
+	}
+}	
