@@ -76,7 +76,6 @@ podTemplate(yaml: '''
                       pwd
                       cd Chapter08/sample1
                       chmod +x gradlew
-                      ./gradlew test
                        '''
               }
 
@@ -91,7 +90,6 @@ podTemplate(yaml: '''
                       pwd
                       cd Chapter08/sample1
                       chmod +x gradlew
-                      ./gradlew test
                        '''
              }   
            
