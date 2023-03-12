@@ -1,113 +1,51 @@
-container('gradle'){
-
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Build Jar') {
+pipeline {
+    agent any
+    
+    stages {
+        stage('Build') {
             when {
-                allOf {
-                    branch 'feature'
-                    not {
-                        changeRequest()
-                    }
-                }
+                // Trigger when a new feature branch PR is created
+                expression { env.CHANGE_TARGET ==~ /^refs\/pull\/\d+\/merge$/ }
             }
             steps {
-                sh 'chmod +x gradlew'
                 sh './gradlew build'
             }
         }
-
-        stage('Unit Test') {
+        stage('Test') {
             when {
-                allOf {
-                    branch 'feature'
-                    not {
-                        changeRequest()
-                    }
-                }
+                // Run on all branches except the playground branch
+                not { branch 'playground' }
             }
             steps {
-                try {
-                    sh './gradlew test'
-                } catch (Exception e) {
-                    currentBuild.result = 'FAILURE'
-                    throw e
+                // Run all tests on the feature branch except for jacocoTestCoverageVerification
+                if (env.BRANCH_NAME == 'feature') {
+                    sh './gradlew checkstyleMain jacocoTestReport test'
+                } else {
+                    sh './gradlew checkstyleMain jacocoTestCoverageVerification jacocoTestReport test'
                 }
             }
         }
-
-        stage('Code Coverage') {
-            when {
-                allOf {
-                    branch 'master'
-                    not {
-                        changeRequest()
-                    }
-                }
-            }
-            steps {
-                try {
-                    sh './gradlew jacocoTestCoverageVerification'
-                    sh './gradlew jacocoTestReport'
-                } catch (Exception e) {
-                    currentBuild.result = 'FAILURE'
-                    throw e
-                }
-            }
-        }
-
-        stage('Code Checkstyle') {
-            when {
-                allOf {
-                    branch 'master'
-                    not {
-                        changeRequest()
-                    }
-                }
-            }
-            steps {
-                try {
-                    sh './gradlew checkstyleMain'
-                } catch (Exception e) {
-                    currentBuild.result = 'FAILURE'
-                    throw e
-                }
-            }
-        }
-
         stage('Build Container') {
             when {
+                // Only build the container if the build was successful, and not on the playground branch
+                not { branch 'playground' }
                 allOf {
-                    branch 'feature'
-                    not {
-                        changeRequest()
-                    }
-                    not {
-                        branch 'playground'
-                    }
-                    not {
-                        environment name: 'BUILD_FAILED', value: 'true'
-                    }
+                    expression { currentBuild.result == 'SUCCESS' }
+                    not { branch 'feature' }
                 }
             }
             steps {
                 script {
-                    def imageVersion = '0.1'
-                    def imageName = 'calculator-feature'
-
-                    if (env.BRANCH_NAME == 'master') {
-                        imageVersion = '1.0'
-                        imageName = 'calculator'
+                    def imageName = env.BRANCH_NAME == 'master' ? 'calculator' : 'calculator-feature'
+                    def version = env.BRANCH_NAME == 'master' ? '1.0' : '0.1'
+                    def imageFullName = "repository/${imageName}:${version}"
+                    try {
+                        sh "docker build -t ${imageFullName} ."
+                    } catch (err) {
+                        println "Failed to build docker image"
                     }
-
-                    sh 'docker build -t ' + imageName + ':' + imageVersion + ' .'
-                    sh 'docker push ' + imageName + ':' + imageVersion
                 }
             }
         }
     }
-
+}
